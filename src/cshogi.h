@@ -417,7 +417,7 @@ public:
             }
 
             // 点数(先手28点、後手27点までの残り枚数)
-            const int ownBigPiecesCount = (pos.bbOf(Rook, Dragon, Bishop, Horse) & opponentsField & position.bbOf(c)).popCount();
+            const int ownBigPiecesCount = (pos.bbOf(Rook, Dragon, Bishop, Horse) & opponentsField & pos.bbOf(c)).popCount();
             const int ownSmallPiecesCount = ownPiecesCount - ownBigPiecesCount;
             const int val = ownSmallPiecesCount
             + hand.numOf(HPawn) + hand.numOf(HLance) + hand.numOf(HKnight)
