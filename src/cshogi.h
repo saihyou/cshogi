@@ -32,7 +32,10 @@ constexpr u32 MAX_PIECES_IN_HAND[] = {
 };
 constexpr u32 MAX_PIECES_IN_HAND_SUM = MAX_HPAWN_NUM + MAX_HLANCE_NUM + MAX_HKNIGHT_NUM + MAX_HSILVER_NUM + MAX_HGOLD_NUM + MAX_HBISHOP_NUM + MAX_HROOK_NUM;
 constexpr u32 MAX_FEATURES2_HAND_NUM = (int)ColorNum * MAX_PIECES_IN_HAND_SUM;
-constexpr u32 MAX_FEATURES2_NUM = MAX_FEATURES2_HAND_NUM + 1/*王手*/;
+constexpr u32 MAX_NYUGYOKU_OPP_FIELD = 10; // 敵陣三段目以内の駒(10枚までの残り枚数)
+constexpr u32 MAX_NYUGYOKU_SCORE = 20; // 点数(先手28点、後手27点までの残り枚数)
+constexpr u32 MAX_FEATURES2_NYUGYOKU_NUM = 1/*入玉*/ + MAX_NYUGYOKU_OPP_FIELD + MAX_NYUGYOKU_SCORE;
+constexpr u32 MAX_FEATURES2_NUM = MAX_FEATURES2_HAND_NUM + 1/*王手*/ + (int)ColorNum * MAX_FEATURES2_NYUGYOKU_NUM;
 
 // 移動の定数
 enum MOVE_DIRECTION {
@@ -393,6 +396,36 @@ public:
                 }
                 std::fill_n((*features2_hand)[c2][p], (int)SquareNum * num, 1);
                 p += MAX_PIECES_IN_HAND[hp];
+            }
+
+            // 入玉宣言
+            // 敵陣のマスク
+            const Bitboard opponentsField = (c == Black ? inFrontMask<Black, Rank4>() : inFrontMask<White, Rank6>());
+
+            // 玉が敵陣三段目以内に入っている
+            int kingCount = 0;
+            if (position.bbOf(King, c).andIsAny(opponentsField)) {
+                std::fill_n((*features2)[MAX_FEATURES2_HAND_NUM + 1 + (int)c2 * MAX_FEATURES2_NYUGYOKU_NUM], SquareNum, 1);
+			    kingCount = 1;
+            }
+
+            // 敵陣三段目以内の駒(10枚までの残り枚数)
+            const int ownPiecesCount = (position.bbOf(c) & opponentsField).popCount() - kingCount;
+            const int restOppFieldNum = 10 - ownPiecesCount;
+            if (restOppFieldNum < MAX_NYUGYOKU_OPP_FIELD) {
+                std::fill_n((*features2)[MAX_FEATURES2_HAND_NUM + 1 + (int)c2 * MAX_FEATURES2_NYUGYOKU_NUM + 1 + std::max(0, restOppFieldNum)], SquareNum, 1);
+            }
+
+            // 点数(先手28点、後手27点までの残り枚数)
+            const int ownBigPiecesCount = (position.bbOf(Rook, Dragon, Bishop, Horse) & opponentsField & position.bbOf(c)).popCount();
+            const int ownSmallPiecesCount = ownPiecesCount - ownBigPiecesCount;
+            const int val = ownSmallPiecesCount
+            + numHPawn + numHLance + numHKnight
+            + numHSilver + numHGold
+            + (ownBigPiecesCount + numHBishop + numHRook) * 5;
+            const int restPoint = (c == Black ? 28 : 27) - val;
+            if (restPoint < MAX_NYUGYOKU_SCORE) {
+                std::fill_n((*features2)[MAX_FEATURES2_HAND_NUM + 1 + (int)c2 * MAX_FEATURES2_NYUGYOKU_NUM + 1 + MAX_NYUGYOKU_OPP_FIELD + std::max(0, restPoint)], SquareNum, 1);
             }
         }
 
